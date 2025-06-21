@@ -1,0 +1,59 @@
+# docker-compose.yml
+services:
+  bot:
+    build: .
+    container_name: bot-service
+    env_file:
+      - .env
+    # Эта опция гарантирует, что бот запустится только ПОСЛЕ того,
+    # как Postgres и MinIO будут готовы принимать подключения.
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # Пробрасываем исходники внутрь контейнера для удобства разработки.
+    # Любые изменения в коде сразу будут видны без пересборки образа.
+    volumes:
+      - ./src:/app/src
+
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: postgres-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Проверяем, готов ли Postgres принимать подключения
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio-s3
+    ports:
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      # Проверяем, готов ли MinIO
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  minio_data:
