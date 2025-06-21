@@ -10,5 +10,4 @@ class FaqEntry(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    # Включаем поддержку типа vector. 1024 - это размерность эмбеддингов Gemini.
-    embedding: Mapped[Vector] = mapped_column(Vector(1024))
+    embedding: Mapped[Vector] = mapped_column(Vector(768))
