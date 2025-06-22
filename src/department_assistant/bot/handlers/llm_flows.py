@@ -3,7 +3,7 @@
 from aiogram import F, Router # <--- Убедитесь, что Router импортирован
 from aiogram.types import Message
 
-#from ...services.faq_service import find_similar_faq
+from ...services.faq_service import find_similar_faq
 
 router = Router() # <--- ВОТ ЭТА СТРОКА, СКОРЕЕ ВСЕГО, ОТСУТСТВУЕТ
 
