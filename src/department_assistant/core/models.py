@@ -2,6 +2,7 @@
 from enum import Enum
 from datetime import datetime
 from pydantic import BaseModel, Field
+from typing import List
 
 class Intent(str, Enum):
     """Категории (намерения) пользователя, которые определяет LLM-роутер."""
@@ -21,3 +22,9 @@ class MeetingInfo(BaseModel):
     start_time: datetime
     # Добавим пока что длительность по умолчанию 1 час
     end_time: datetime | None = None
+
+class TaskInfo(BaseModel):
+    """Информация о задаче, извлеченная из текста."""
+    title: str
+    deadline_str: str | None = None # Дедлайн в виде строки
+    assignees: List[str] = [] # Список ответственных (например, ['@daniil', '@maria'])

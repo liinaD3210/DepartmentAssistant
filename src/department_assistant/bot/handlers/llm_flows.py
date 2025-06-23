@@ -13,14 +13,57 @@ from datetime import timedelta
 from ...scheduler.scheduler import scheduler
 from ...scheduler.scheduler import send_meeting_reminder
 from ...services.llm_service import generate_answer_from_context
+from ...services.llm_router import extract_task_info
+from ...services.task_service import create_task
+from ..keyboards import get_task_confirmation_keyboard, TaskCallback
+from ..states import TaskProposal
+from ...core.models import TaskInfo
 
 
 
 router = Router()
 
 # --- Новые хендлеры-заглушки ---
-async def handle_task_creation(message: Message):
-    await message.reply("Вижу, вы хотите создать задачу. Эта функция пока в разработке.")
+async def handle_task_creation(message: Message, state: FSMContext):
+    task_info = await extract_task_info(message.text)
+    if not task_info:
+        return
+
+    await state.update_data(proposed_task=task_info.model_dump_json())
+    await state.set_state(TaskProposal.waiting_for_confirmation)
+
+    # Формируем красивое сообщение для подтверждения
+    response_lines = [f'Создать задачу "{task_info.title}"?']
+    if task_info.deadline_str:
+        response_lines.append(f"<b>Дедлайн:</b> {task_info.deadline_str}")
+    if task_info.assignees:
+        response_lines.append(f"<b>Ответственные:</b> {' '.join(task_info.assignees)}")
+    
+    await message.reply(
+        "\n".join(response_lines),
+        reply_markup=get_task_confirmation_keyboard()
+    )
+
+# --- Обработчики нажатия на кнопки ---
+@router.callback_query(TaskProposal.waiting_for_confirmation, TaskCallback.filter(F.action == "confirm"))
+async def process_task_confirmation(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    user_data = await state.get_data()
+    proposed_task_info = TaskInfo.model_validate_json(user_data['proposed_task'])
+    await state.clear()
+
+    # Создаем задачу в БД
+    created_task = await create_task(proposed_task_info, callback.message.chat.id, bot)
+
+    # TODO: Добавить напоминание в APScheduler
+
+    await callback.message.edit_text(f"✅ Задача \"{created_task.title}\" создана (ID: {created_task.id}).")
+    await callback.answer()
+
+@router.callback_query(TaskProposal.waiting_for_confirmation, TaskCallback.filter(F.action == "cancel"))
+async def process_task_cancellation(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text("Действие отменено.")
+    await callback.answer()
 
 async def handle_meeting_creation(message: Message):
     await message.reply("Похоже, речь о встрече. Эта функция скоро появится.")
@@ -119,6 +162,6 @@ async def main_llm_router(message: Message, state: FSMContext):
         if '?' in text or any(word in text.lower() for word in ['как', 'что', 'почему', 'где']):
              await handle_faq_question(message, question=text)
     elif intent == Intent.TASK_CREATION:
-        await handle_task_creation(message)
+        await handle_task_creation(message, state)
     elif intent == Intent.MEETING_CREATION:
         await handle_meeting_creation(message, state)

@@ -29,7 +29,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from department_assistant.storage.models.base import Base
 # импортируем все модели, чтобы Alembic их "увидел"
-from department_assistant.storage.models import faq
+from department_assistant.storage.models import faq, task
 
 target_metadata = Base.metadata
 

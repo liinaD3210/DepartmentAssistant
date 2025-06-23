@@ -12,3 +12,15 @@ async def send_meeting_reminder(bot: Bot, chat_id: int, title: str, start_time_s
         chat_id=chat_id,
         text=f"🔔 **Напоминание!**\n\nВстреча \"{title}\" начнется в {start_time_str}."
     )
+
+async def send_task_reminder(bot: Bot, chat_id: int, task_id: int, title: str, assignees: str | None):
+    """Отправляет напоминание о дедлайне задачи."""
+    message_lines = [f"🔥🔥 **ДЕДЛАЙН СЕГОДНЯ!** 🔥🔥"]
+    message_lines.append(f"\nЗадача #{task_id}: {title}")
+    if assignees:
+        message_lines.append(f"Ответственные: {assignees}")
+    
+    await bot.send_message(
+        chat_id=chat_id,
+        text="\n".join(message_lines)
+    )

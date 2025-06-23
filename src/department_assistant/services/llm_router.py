@@ -8,7 +8,7 @@ import google.generativeai as genai
 
 from ..core.config import settings
 from ..core.models import Intent
-from ..core.models import Intent, MeetingInfo
+from ..core.models import Intent, MeetingInfo, TaskInfo 
 
 
 # Используем легковесную и быструю модель для классификации
@@ -101,3 +101,39 @@ async def extract_meeting_info(text: str) -> MeetingInfo | None:
     except (json.JSONDecodeError, Exception) as e:
         logging.error(f"Failed to extract or parse meeting info: {e}")
         return None
+    
+async def extract_task_info(text: str) -> TaskInfo | None:
+    now = datetime.now()
+    prompt = f"""
+    Извлеки из текста информацию о задаче: название (title), дедлайн (deadline_str) и список ответственных (assignees).
+    Ответь ТОЛЬКО в формате JSON. Пример: {{"title": "Подготовить отчет", "deadline_str": "следующая пятница", "assignees": ["@daniil", "@maria"]}}
+
+    - Текущая дата и время для справки: {now.strftime('%Y-%m-%d %H:%M:%S')}.
+    - В 'assignees' включай только username, начинающиеся с @.
+    - В 'deadline_str' сохраняй текст дедлайна, но **ОЧИСТИ ЕГО ОТ ПРЕДЛОГОВ**, таких как "до", "к", "до конца". Например, из "до следующей пятницы" сделай "следующая пятница".
+    - Если какая-то часть информации отсутствует, опусти соответствующее поле в JSON.
+    - Извлекай только ту информацию, которая явно относится к созданию задачи.
+
+    Текст для анализа:
+    ---
+    {text}
+    ---
+    JSON:
+    """
+    try:
+        logging.info(f"Extracting task info from: '{text[:50]}...'")
+        response = await generation_model.generate_content_async(prompt)
+        
+        json_str = response.text.strip().replace("```json", "").replace("```", "").strip()
+        logging.info(f"LLM task extraction result: {json_str}")
+
+        data = json.loads(json_str)
+        if not data or not data.get("title"):
+            return None
+
+        return TaskInfo(**data)
+
+    except (json.JSONDecodeError, Exception) as e:
+        logging.error(f"Failed to extract or parse task info: {e}")
+        return None
+

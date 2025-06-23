@@ -21,3 +21,18 @@ def get_meeting_confirmation_keyboard() -> InlineKeyboardMarkup:
     )
     # as_markup() возвращает правильный тип для reply_markup
     return builder.as_markup()
+
+class TaskCallback(CallbackData, prefix="task"):
+    action: str # 'confirm' или 'cancel'
+
+def get_task_confirmation_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="✅ Создать",
+        callback_data=TaskCallback(action="confirm").pack()
+    )
+    builder.button(
+        text="❌ Отмена",
+        callback_data=TaskCallback(action="cancel").pack()
+    )
+    return builder.as_markup()
