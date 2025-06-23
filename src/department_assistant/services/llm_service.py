@@ -8,6 +8,7 @@ genai.configure(api_key=settings.gemini_api_key)
 
 # Указываем правильное, полное имя модели для эмбеддингов
 EMBEDDING_MODEL_NAME = "models/embedding-001"
+generation_model = genai.GenerativeModel('gemini-1.5-flash')
 
 async def get_text_embedding(text: str) -> list[float]:
     """Получает векторное представление (эмбеддинг) для текста."""
@@ -42,3 +43,35 @@ async def get_query_embedding(text: str) -> list[float]:
     except Exception as e:
         logging.error(f"Failed to get query embedding from Gemini: {e}")
         raise
+
+async def generate_answer_from_context(question: str, context: list[str]) -> str:
+    """Генерирует ответ на основе вопроса и найденного контекста."""
+    if not context:
+        return "К сожалению, я не нашел информации по вашему вопросу в базе знаний."
+
+    # Соединяем найденные фрагменты в один большой текст контекста
+    context_str = "\n---\n".join(context)
+
+    prompt = f"""
+    Ты — вежливый и полезный ИИ-ассистент в компании.
+    Твоя задача — ответить на вопрос пользователя, основываясь ИСКЛЮЧИТЕЛЬНО на предоставленном ниже контексте.
+    Не придумывай ничего от себя. Если в контексте нет прямого ответа, вежливо сообщи, что не можешь ответить.
+    Отвечай от первого лица (например, "Я нашел, что...").
+
+    **Контекст из базы знаний:**
+    {context_str}
+
+    **Вопрос пользователя:**
+    {question}
+
+    **Твой ответ:**
+    """
+    
+    try:
+        logging.info(f"Generating answer for question: '{question[:50]}...'")
+        response = await generation_model.generate_content_async(prompt)
+        logging.info("Successfully generated answer.")
+        return response.text
+    except Exception as e:
+        logging.error(f"Error during answer generation: {e}")
+        return "Произошла ошибка при генерации ответа. Пожалуйста, попробуйте позже."

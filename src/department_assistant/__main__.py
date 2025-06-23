@@ -6,6 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from .core.config import settings
 from .bot.handlers import direct_commands, llm_flows
+from .scheduler.scheduler import scheduler
 
 async def main():
     logging.basicConfig(level=logging.INFO)
@@ -16,6 +17,8 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
+    scheduler.start()
+    
     dp = Dispatcher()
 
     # Подключаем роутеры
