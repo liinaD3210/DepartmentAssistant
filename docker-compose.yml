@@ -1,7 +1,9 @@
 # docker-compose.yml
 services:
   bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: bot-service
     env_file:
       - .env
@@ -16,6 +18,31 @@ services:
     # Любые изменения в коде сразу будут видны без пересборки образа.
     volumes:
       - ./src:/app/src
+
+      # --- НОВЫЙ СЕРВИС ДЛЯ ДЕМО ---
+  demo:
+    build:
+      context: .
+      dockerfile: demo.Dockerfile # Указываем наш новый Dockerfile
+    container_name: demo-app
+    env_file:
+      - .env
+    ports:
+      # Пробрасываем порт 8501 из контейнера на 8501 нашего компьютера
+      - "8501:8501" 
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      # Пробрасываем исходники наших сервисов
+      - ./src:/app/src
+      # Пробрасываем главный файл и папку с остальными страницами
+      - ./1_Welcome.py:/app/1_Welcome.py
+      - ./pages:/app/pages
+      # Также пробросим скрипт наполнения, если захотим запустить его из контейнера
+      - ./seed_db.py:/app/seed_db.py
 
   db:
     image: pgvector/pgvector:pg15
